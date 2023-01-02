@@ -1,0 +1,79 @@
+def normalized_cross_correlation(image, template):
+    img_orig = np.array(image, dtype=np.float64)
+    img_template = np.array(template, dtype=np.float64)
+
+    result = np.zeros(
+        (
+            (img_orig.shape[0] - img_template.shape[0] + 1),
+            (img_orig.shape[1] - img_template.shape[1] + 1),
+        ),
+        float,
+    )
+
+    height_template = img_template.shape[0]
+    width_template = img_template.shape[1]
+
+    slider_y = img_orig.shape[0] - img_template.shape[0] + 1
+    slider_x = img_orig.shape[1] - img_template.shape[1] + 1
+
+    img_orig_edges = cv2.Canny(np.uint8(image), 450, 250, apertureSize = 3)
+
+    img_template_edges = cv2.Canny(np.uint8(template), 50, 150, apertureSize = 3)
+    for y in range(slider_y):
+        for x in range(slider_x):
+            value = np.sum(np.multiply(img_orig_edges[y : y + height_template, x : x + width_template], img_template_edges))
+            result[y, x] = value
+
+    result = np.array(result)
+    max_val = np.max(result)
+    result = (result > 0.1 * max_val) * result
+    result /= np.max(result)
+    result *= 255
+
+    # print(np.max(result))
+    # cv2.imshow("result", result)
+    # cv2.waitKey(0)
+
+    # result_flattened = result.flatten()
+
+    # max_values = np.argpartition(result_flattened, -4)[-4:]
+    # # print(max_values)
+    # points = []
+    # for value in max_values:
+    #     col_of_max = int(math.floor(value / slider_x))
+    #     row_of_max = int(value - col_of_max * slider_x)
+    #     points.append((row_of_max + len(img_template) // 2, col_of_max + len(img_template[0]) // 2))
+    #     # cv2.circle(image, (row_of_max + len(img_template) // 2, col_of_max + len(img_template[0]) // 2), 10, (128, 128, 128), 5)
+    
+    result = np.array(result, dtype=np.uint8)
+    points = get_circles_post_processing(result)
+    return points
+
+def get_circles(image):
+    minimum = 50
+    maximum = 100
+
+    img_in_greyscale = cv2.cvtColor(image.copy(), cv2.COLOR_BGR2GRAY)
+    
+    cv2.imshow('image', img_in_greyscale)
+    cv2.waitKey(0)
+
+    circles = cv2.HoughCircles(
+        img_in_greyscale, 
+        cv2.HOUGH_GRADIENT,
+        1,
+        25,
+        param1 = 15,
+        param2 = 15,
+        minRadius = minimum,
+        maxRadius = maximum
+    )
+    points = []
+    for circle in circles[0]:
+        center = (int(circle[0]), int(circle[1]))
+        points.append(center)
+        cv2.circle(img_in_greyscale, center, 5, (128, 128, 255), 10)
+
+    cv2.imshow("circles", img_in_greyscale)
+    cv2.waitKey(0)
+    return points
